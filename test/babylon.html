@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html" charset="utf-8" />
+    <title>Babylon</title>
+    <!-- Link to the last version of BabylonJS -->
+    <script src="https://preview.babylonjs.com/babylon.js"></script>
+    <!-- Link to the last version of BabylonJS loaders to enable loading filetypes such as .gltf -->
+    <script src="https://preview.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+    <!-- Link to pep.js to ensure pointer events work consistently in all browsers -->
+    <script src="https://code.jquery.com/pep/0.4.1/pep.js"></script>
+    <style>
+        body,
+        html {
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+
+        h1 {
+            margin: 10px 0;
+            color: #bbd8fa;
+            font-size: 10em;
+            font-family: 'Helvetica';
+            word-wrap: break-word;
+            text-transform: uppercase;
+            text-shadow: 15px 5px #6c6dcc;
+        }
+
+        img {
+            max-width: 500px;
+        }
+
+        #fpsLabel {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            color: #999;
+            cursor: default;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="fpsLabel"></div> 
+    <canvas id="renderCanvas"></canvas>
+</body>
+<script>
+    if (BABYLON.Engine.isSupported()) {
+        var canvas = document.getElementById("renderCanvas")
+        var engine = new BABYLON.Engine(canvas, true)
+        //Babylon Magical Scene loader 
+        BABYLON.SceneLoader.Load("", "wip2.babylon", engine, function (newScene) {
+            // Wait for textures and shaders to be ready
+            newScene.executeWhenReady(function () {
+
+                var gamepad
+                newScene.gamepadManager.onGamepadConnectedObservable.add(function (pad) {
+                    console.log("gamepad connected");
+                    if (pad.type == BABYLON.Gamepad.XBOX) {
+                        gamepad = pad
+                    }
+                })
+                newScene.onBeforeRenderObservable.add(() => {
+                    if (gamepad) {
+                        if (gamepad.buttonA) {
+                            camera.position.y += 0.1;
+                        }
+                        if (gamepad.buttonX) {
+                            camera.position.y -= 0.1;
+                        }
+                        camera.position.x += gamepad.leftStick.x / 10
+                        camera.position.z += -gamepad.leftStick.y / 10
+                    }
+                })
+
+                //Define gravity
+                newScene.gravity = new BABYLON.Vector3(0, -2, 0)
+
+                newScene.collisionsEnabled = true
+                //Enable global collisions
+                newScene.collisionsEnabled = true;
+
+                let camera = new BABYLON.UniversalCamera("Cam1",
+                    new BABYLON.Vector3(1, 500, 1), newScene)
+                camera.speed = 0.25
+                camera.setTarget(BABYLON.Vector3.Zero())
+                camera.attachControl(canvas, true)
+
+                camera.keysUp.push(87)
+                camera.keysDown.push(83)
+                camera.keysLeft.push(65)
+                camera.keysRight.push(68)
+
+                //Set the ellipsoid around the camera (e.g. your player's size)
+                camera.ellipsoid = new BABYLON.Vector3(1.5, 1, 1.5)
+                camera.applyGravity = true
+                //Enable camera collisions
+                camera.checkCollisions = true
+                camera._needMoveForGravity = true;
+
+                //Skybox Config
+                let skybox = BABYLON.MeshBuilder.CreateBox("skyBox", { size: 1000.0 }, newScene);
+                let skyboxMaterial = new BABYLON.StandardMaterial("skyBox", newScene);
+                skyboxMaterial.backFaceCulling = false;
+                skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture("textures2/skybox", newScene);
+                skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
+                skyboxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
+                skyboxMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
+                skybox.material = skyboxMaterial;
+
+
+                //Sprint
+                window.onkeydown = function (e) {
+                    let key = e.keyCode ? e.keyCode : e.which;
+                    console.log(key + " pressed");
+                    if (key == 16) {
+                        camera.speed = 0.9
+                    }
+                };
+                window.onkeyup = function (e) {
+                    let key = e.keyCode ? e.keyCode : e.which;
+                    if (key == 16) {
+                        camera.speed = 0.2
+                    }
+                };
+                // Once the newScene is loaded, just register a render loop to render it
+                engine.runRenderLoop(function () {
+                    newScene.render();
+                    let fpsLabel = document.getElementById("fpsLabel");
+                    fpsLabel.innerHTML = engine.getFps().toFixed() + " fps";
+                })
+            })
+        })
+    }
+    console.clear()
+</script>
